@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Universal Virtual Remote</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --surface2: #1e1e2e;
+    --surface3: #2a2a3e;
+    --accent: #6c5ce7;
+    --accent-glow: rgba(108, 92, 231, 0.3);
+    --red: #e74c3c;
+    --green: #2ecc71;
+    --blue: #3498db;
+    --orange: #f39c12;
+    --text: #eee;
+    --text-dim: #888;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    width: 100%;
+    max-width: 480px;
+    padding: 16px 20px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; color: var(--green);
+  }
+  .header .status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Device Tabs */
+  .device-tabs {
+    width: 100%; max-width: 480px;
+    padding: 8px 16px;
+    display: flex; gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .device-tabs::-webkit-scrollbar { display: none; }
+  .device-tab {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border-radius: 50px;
+    background: var(--surface);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .device-tab:hover { background: var(--surface2); color: var(--text); }
+  .device-tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .device-tab .tab-icon { font-size: 1rem; }
+
+  /* Remote Container */
+  .remote-container {
+    width: 100%; max-width: 480px;
+    padding: 8px 16px 30px;
+    flex: 1;
+  }
+
+  .device-remote { display: none; }
+  .device-remote.active { display: block; }
+
+  /* Power Button */
+  .power-section {
+    display: flex; justify-content: center; margin: 12px 0;
+  }
+  .power-btn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--red);
+    background: var(--surface);
+    color: var(--red);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .power-btn:active {
+    background: var(--red);
+    color: white;
+    transform: scale(0.92);
+  }
+  .power-btn.on {
+    background: var(--red);
+    color: white;
+    box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
+  }
+
+  /* Section Label */
+  .section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-align: center;
+    margin: 18px 0 10px;
+  }
+
+  /* D-Pad */
+  .dpad-container {
+    display: flex; justify-content: center;
+    margin: 10px 0;
+  }
+  .dpad {
+    position: relative;
+    width: 200px; height: 200px;
+  }
+  .dpad-btn {
+    position: absolute;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    font-size: 1.2rem;
+  }
+  .dpad-btn:active {
+    background: var(--accent);
+    transform: scale(0.95);
+  }
+  .dpad-center {
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent) !important;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    z-index: 2;
+    border: none;
+    color: white !important;
+  }
+  .dpad-center:active { background: #5a4bd6 !important; }
+  .dpad-up {
+    width: 70px; height: 60px;
+    border-radius: var(--radius) var(--radius) 4px 4px;
+    top: 0; left: 50%; transform: translateX(-50%);
+  }
+  .dpad-down {
+    width: 70px; height: 60px;
+    border-radius: 4px 4px var(--radius) var(--radius);
+    bottom: 0; left: 50%; transform: translateX(-50%);
+  }
+  .dpad-left {
+    width: 60px; height: 70px;
+    border-radius: var(--radius) 4px 4px var(--radius);
+    left: 0; top: 50%; transform: translateY(-50%);
+  }
+  .dpad-right {
+    width: 60px; height: 70px;
+    border-radius: 4px var(--radius) var(--radius) 4px;
+    right: 0; top: 50%; transform: translateY(-50%);
+  }
+
+  /* Volume/Channel Rocker */
+  .rocker-container {
+    display: flex; justify-content: center; gap: 16px;
+    margin: 10px 0;
+  }
+  .rocker {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+  }
+  .rocker-label {
+    font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 2px; color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .rocker-btn {
+    width: 70px; height: 50px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rocker-btn:active {
+    background: var(--accent);
+    transform: scale(0.93);
+  }
+  .rocker-btn.vol-up:active, .rocker-btn.vol-down:active { background: var(--green); }
+  .rocker-btn.ch-up:active, .rocker-btn.ch-down:active { background: var(--blue); }
+
+  /* Action Buttons Row */
+  .action-row {
+    display: flex; justify-content: center; gap: 12px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    min-width: 64px; height: 44px;
+    padding: 0 16px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .action-btn:active {
+    background: var(--accent);
+    transform: scale(0.93);
+  }
+  .action-btn .btn-icon { font-size: 1rem; }
+
+  /* Color Buttons */
+  .color-buttons {
+    display: flex; justify-content: center; gap: 12px;
+    margin: 10px 0;
+  }
+  .color-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.65rem;
+    color: white;
+    transition: all 0.15s;
+  }
+  .color-btn:active { transform: scale(0.88); }
+  .color-btn.red { background: #e74c3c; }
+  .color-btn.green { background: #2ecc71; }
+  .color-btn.yellow { background: #f1c40f; color: #333; }
+  .color-btn.blue { background: #3498db; }
+
+  /* Number Pad */
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 260px;
+    margin: 10px auto;
+  }
+  .num-btn {
+    height: 52px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .num-btn:active {
+    background: var(--accent);
+    transform: scale(0.93);
+  }
+  .num-btn.zero { grid-column: span 2; }
+
+  /* Media Controls */
+  .media-controls {
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    margin: 10px 0;
+  }
+  .media-btn {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .media-btn:active {
+    background: var(--accent);
+    transform: scale(0.9);
+  }
+  .media-btn.play {
+    width: 64px; height: 64px;
+    background: var(--accent);
+    font-size: 1.4rem;
+    border: none;
+  }
+  .media-btn.play:active { background: #5a4bd6; }
+
+  /* Slider Control */
+  .slider-section {
+    margin: 10px 0;
+    padding: 0 10px;
+  }
+  .slider-row {
+    display: flex; align-items: center; gap: 12px;
+    margin: 8px 0;
+  }
+  .slider-row .slider-icon {
+    font-size: 1.1rem; width: 28px; text-align: center;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface3);
+    outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .slider-row .slider-val {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* Mode Buttons */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .mode-btn {
+    height: 48px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+  }
+  .mode-btn .mode-icon { font-size: 1.1rem; }
+  .mode-btn:active {
+    background: var(--accent);
+    transform: scale(0.93);
+  }
+  .mode-btn.active-mode {
+    border-color: var(--accent);
+    background: rgba(108, 92, 231, 0.15);
+  }
+
+  /* Temp Display */
+  .temp-display {
+    display: flex; justify-content: center; align-items: center;
+    margin: 10px 0;
+  }
+  .temp-screen {
+    background: #0d1a0d;
+    border: 2px solid #1a3a1a;
+    border-radius: var(--radius);
+    padding: 16px 30px;
+    text-align: center;
+    min-width: 180px;
+  }
+  .temp-value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #2ecc71;
+    font-variant-numeric: tabular-nums;
+  }
+  .temp-value span { font-size: 1.5rem; vertical-align: super; }
+  .temp-mode-label {
+    font-size: 0.7rem;
+    color: #2ecc71;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  /* Temp Controls */
+  .temp-controls {
+    display: flex; justify-content: center; align-items: center; gap: 24px;
+    margin: 12px 0;
+  }
+  .temp-btn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .temp-btn:active {
+    background: var(--accent);
+    transform: scale(0.9);
+  }
+
+  /* Quick Actions Grid */
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .quick-btn {
+    height: 52px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .quick-btn:active {
+    background: var(--accent);
+    transform: scale(0.95);
+  }
+  .quick-btn .q-icon { font-size: 1.1rem; }
+
+  /* Fan Speed Buttons */
+  .fan-speeds {
+    display: flex; justify-content: center; gap: 8px;
+    margin: 10px 0;
+  }
+  .fan-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .fan-btn:active { transform: scale(0.9); }
+  .fan-btn.active-fan {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  /* Keyboard section */
+  .keyboard-section {
+    margin: 10px 0;
+  }
+  .keyboard-input {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    display: block;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    text-align: center;
+  }
+  .keyboard-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface3);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Settings Panel */
+  .settings-panel {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 999;
+    justify-content: center;
+    align-items: center;
+  }
+  .settings-panel.open { display: flex; }
+  .settings-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 24px;
+    width: 90%;
+    max-width: 360px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .settings-card h3 {
+    font-size: 1rem;
+    margin-bottom: 16px;
+    text-align: center;
+    color: var(--accent);
+  }
+  .setting-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .setting-item label { font-size: 0.85rem; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--surface3);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.3s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.3s;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+  .settings-close {
+    margin-top: 16px;
+    width: 100%;
+    padding: 12px;
+    background: var(--surface3);
+    border: none;
+    color: var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  /* PC hint */
+  .pc-hint {
+    display: none;
+    text-align: center;
+    padding: 8px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+  @media (min-width: 768px) {
+    .pc-hint { display: block; }
+    body { justify-content: center; }
+    .remote-container { padding-bottom: 60px; }
+  }
+
+  /* Ripple Effect */
+  .ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  .ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transform: scale(0);
+    animation: rippleAnim 0.5s ease-out;
+    pointer-events: none;
+  }
+  @keyframes rippleAnim {
+    to { transform: scale(3); opacity: 0; }
+  }
+
+  /* Smooth scroll for tabs */
+  @media (max-width: 480px) {
+    .dpad { width: 180px; height: 180px; }
+    .dpad-center { width: 60px; height: 60px; }
+    .dpad-up, .dpad-down { width: 60px; height: 52px; }
+    .dpad-left, .dpad-right { width: 52px; height: 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>⚡ Universal Remote</h1>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="status"><div class="dot"></div> Ready</div>
+    <button onclick="openSettings()" style="background:none;border:none;color:var(--text-dim);font-size:1.3rem;cursor:pointer;">⚙️</button>
+  </div>
+</div>
+
+<!-- Device Tabs -->
+<div class="device-tabs" id="deviceTabs">
+  <button class="device-tab active" data-device="tv" onclick="switchDevice('tv')">
+    <span class="tab-icon">📺</span> TV
+  </button>
+  <button class="device-tab" data-device="audio" onclick="switchDevice('audio')">
+    <span class="tab-icon">🔊</span> Audio
+  </button>
+  <button class="device-tab" data-device="ac" onclick="switchDevice('ac')">
+    <span class="tab-icon">❄️</span> AC
+  </button>
+  <button class="device-tab" data-device="projector" onclick="switchDevice('projector')">
+    <span class="tab-icon">📽️</span> Projector
+  </button>
+  <button class="device-tab" data-device="stream" onclick="switchDevice('stream')">
+    <span class="tab-icon">🎬</span> Streaming
+  </button>
+  <button class="device-tab" data-device="light" onclick="switchDevice('light')">
+    <span class="tab-icon">💡</span> Lights
+  </button>
+  <button class="device-tab" data-device="fan" onclick="switchDevice('fan')">
+    <span class="tab-icon">🌀</span> Fan
+  </button>
+</div>
+
+<!-- Remote Container -->
+<div class="remote-container">
+
+  <!-- ==================== TV REMOTE ==================== -->
+  <div class="device-remote active" id="remote-tv">
+    <!-- Power -->
+    <div class="power-section">
+      <button class="power-btn ripple" id="tv-power" onclick="togglePower('tv')">⏻</button>
+    </div>
+
+    <!-- Number Pad -->
+    <div class="section-label">Channels</div>
+    <div class="numpad">
+      <button class="num-btn ripple" onclick="sendCmd('tv','1')">1</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','2')">2</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','3')">3</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','4')">4</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','5')">5</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','6')">6</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','7')">7</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','8')">8</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','9')">9</button>
+      <button class="num-btn ripple zero" onclick="sendCmd('tv','0')">0</button>
+      <button class="num-btn ripple" onclick="sendCmd('tv','')">⌫</button>
+    </div>
+
+    <!-- Volume & Channel -->
+    <div class="rocker-container">
+      <div class="rocker">
+        <div class="rocker-label">Vol</div>
+        <button class="rocker-btn vol-up ripple" onclick="sendCmd('tv','vol_up')">＋</button>
+        <button class="rocker-btn vol-down ripple" onclick="sendCmd('tv','vol_down')">－</button>
+      </div>
+      <div class="rocker">
+        <div class="rocker-label">CH</div>
+        <button class="rocker-btn ch-up ripple" onclick="sendCmd('tv','ch_up')">▲</button>
+        <button class="rocker-btn ch-down ripple" onclick="sendCmd('tv','ch_down')">▼</button>
+      </div>
+    </div>
+
+    <!-- D-Pad -->
+    <div class="section-label">Navigation</div>
+    <div class="dpad-container">
+      <div class="dpad">
+        <button class="dpad-btn dpad-up ripple" onclick="sendCmd('tv','up')">▲</button>
+        <button class="dpad-btn dpad-down ripple" onclick="sendCmd('tv','down')">▼</button>
+        <button class="dpad-btn dpad-left ripple" onclick="sendCmd('tv','left')">◀</button>
+        <button class="dpad-btn dpad-right ripple" onclick="sendCmd('tv','right')">▶</button>
+        <button class="dpad-btn dpad-center ripple" onclick="sendCmd('tv','ok')">OK</button>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('tv','menu')"><span class="btn-icon">☰</span> Menu</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','back')"><span class="btn-icon">←</span> Back</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','home')"><span class="btn-icon">⌂</span> Home</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','info')"><span class="btn-icon">ℹ</span> Info</button>
+    </div>
+
+    <!-- Color Buttons -->
+    <div class="section-label">Quick Keys</div>
+    <div class="color-buttons">
+      <button class="color-btn red ripple" onclick="sendCmd('tv','red')">Red</button>
+      <button class="color-btn green ripple" onclick="sendCmd('tv','green')">Green</button>
+      <button class="color-btn yellow ripple" onclick="sendCmd('tv','yellow')">Yellow</button>
+      <button class="color-btn blue ripple" onclick="sendCmd('tv','blue')">Blue</button>
+    </div>
+
+    <!-- Media -->
+    <div class="section-label">Playback</div>
+    <div class="media-controls">
+      <button class="media-btn ripple" onclick="sendCmd('tv','rewind')">⏪</button>
+      <button class="media-btn ripple" onclick="sendCmd('tv','play_pause')">⏯</button>
+      <button class="media-btn play ripple" onclick="sendCmd('tv','play')">▶</button>
+      <button class="media-btn ripple" onclick="sendCmd('tv','stop')">⏹</button>
+      <button class="media-btn ripple" onclick="sendCmd('tv','forward')">⏩</button>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('tv','mute')"><span class="btn-icon">🔇</span> Mute</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','input')"><span class="btn-icon">🔌</span> Input</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','sleep')"><span class="btn-icon">😴</span> Sleep</button>
+      <button class="action-btn ripple" onclick="sendCmd('tv','record')"><span class="btn-icon">⏺</span> Record</button>
+    </div>
+  </div>
+
+  <!-- ==================== AUDIO REMOTE ==================== -->
+  <div class="device-remote" id="remote-audio">
+    <div class="power-section">
+      <button class="power-btn ripple" id="audio-power" onclick="togglePower('audio')">⏻</button>
+    </div>
+
+    <div class="section-label">Volume</div>
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">🔈</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'audio-vol')">
+        <span class="slider-val" id="audio-vol">50</span>
+      </div>
+    </div>
+
+    <div class="section-label">Now Playing</div>
+    <div class="media-controls">
+      <button class="media-btn ripple" onclick="sendCmd('audio','shuffle')">🔀</button>
+      <button class="media-btn ripple" onclick="sendCmd('audio','prev')">⏮</button>
+      <button class="media-btn play ripple" onclick="sendCmd('audio','play')">▶</button>
+      <button class="media-btn ripple" onclick="sendCmd('audio','next')">⏭</button>
+      <button class="media-btn ripple" onclick="sendCmd('audio','repeat')">🔁</button>
+    </div>
+
+    <div class="section-label">Sound Mode</div>
+    <div class="mode-grid">
+      <button class="mode-btn ripple active-mode" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">🎵</span> Music
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">🎬</span> Movie
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">📡</span> News
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">🎮</span> Game
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">🌙</span> Night
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'audio-mode')">
+        <span class="mode-icon">🔊</span> Bass
+      </button>
+    </div>
+
+    <div class="section-label">Equalizer</div>
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">🎸</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'eq-bass')">
+        <span class="slider-val" id="eq-bass">50</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-icon">🎶</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'eq-mid')">
+        <span class="slider-val" id="eq-mid">50</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-icon">🔔</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'eq-treble')">
+        <span class="slider-val" id="eq-treble">50</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('audio','mute')"><span class="btn-icon">🔇</span> Mute</button>
+      <button class="action-btn ripple" onclick="sendCmd('audio','bluetooth')"><span class="btn-icon">📶</span> BT</button>
+      <button class="action-btn ripple" onclick="sendCmd('audio','aux')"><span class="btn-icon">🔌</span> AUX</button>
+      <button class="action-btn ripple" onclick="sendCmd('audio','usb')"><span class="btn-icon">💾</span> USB</button>
+    </div>
+  </div>
+
+  <!-- ==================== AC REMOTE ==================== -->
+  <div class="device-remote" id="remote-ac">
+    <div class="power-section">
+      <button class="power-btn ripple" id="ac-power" onclick="togglePower('ac')">⏻</button>
+    </div>
+
+    <div class="section-label">Temperature</div>
+    <div class="temp-display">
+      <div class="temp-screen">
+        <div class="temp-value" id="ac-temp">24<span>°C</span></div>
+        <div class="temp-mode-label" id="ac-mode-label">Cooling</div>
+      </div>
+    </div>
+
+    <div class="temp-controls">
+      <button class="temp-btn ripple" onclick="adjustTemp(-1)">－</button>
+      <button class="temp-btn ripple" onclick="sendCmd('ac','turbo')">⚡</button>
+      <button class="temp-btn ripple" onclick="adjustTemp(1)">＋</button>
+    </div>
+
+    <div class="section-label">Mode</div>
+    <div class="mode-grid">
+      <button class="mode-btn ripple active-mode" onclick="selectMode(this,'ac-mode'); setAcMode('Cooling')">
+        <span class="mode-icon">❄️</span> Cool
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'ac-mode'); setAcMode('Heating')">
+        <span class="mode-icon">🔥</span> Heat
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'ac-mode'); setAcMode('Auto')">
+        <span class="mode-icon">🔄</span> Auto
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'ac-mode'); setAcMode('Dry')">
+        <span class="mode-icon">💧</span> Dry
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'ac-mode'); setAcMode('Fan Only')">
+        <span class="mode-icon">🌀</span> Fan
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'ac-mode'); setAcMode('Eco')">
+        <span class="mode-icon">🌿</span> Eco
+      </button>
+    </div>
+
+    <div class="section-label">Fan Speed</div>
+    <div class="fan-speeds">
+      <button class="fan-btn ripple" onclick="setFan(this, 'Auto')">Auto</button>
+      <button class="fan-btn ripple" onclick="setFan(this, '1')">1</button>
+      <button class="fan-btn ripple active-fan" onclick="setFan(this, '2')">2</button>
+      <button class="fan-btn ripple" onclick="setFan(this, '3')">3</button>
+      <button class="fan-btn ripple" onclick="setFan(this, '4')">4</button>
+    </div>
+
+    <div class="section-label">Controls</div>
+    <div class="quick-grid">
+      <button class="quick-btn ripple" onclick="sendCmd('ac','swing')"><span class="q-icon">↕️</span> Swing</button>
+      <button class="quick-btn ripple" onclick="sendCmd('ac','timer')"><span class="q-icon">⏲️</span> Timer</button>
+      <button class="quick-btn ripple" onclick="sendCmd('ac','sleep')"><span class="q-icon">🌙</span> Sleep</button>
+      <button class="quick-btn ripple" onclick="sendCmd('ac','clean')"><span class="q-icon">✨</span> Clean</button>
+      <button class="quick-btn ripple" onclick="sendCmd('ac','display')"><span class="q-icon">💡</span> Display</button>
+      <button class="quick-btn ripple" onclick="sendCmd('ac','quiet')"><span class="q-icon">🤫</span> Quiet</button>
+    </div>
+  </div>
+
+  <!-- ==================== PROJECTOR REMOTE ==================== -->
+  <div class="device-remote" id="remote-projector">
+    <div class="power-section">
+      <button class="power-btn ripple" id="projector-power" onclick="togglePower('projector')">⏻</button>
+    </div>
+
+    <div class="section-label">Source</div>
+    <div class="mode-grid">
+      <button class="mode-btn ripple active-mode" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">🔌</span> HDMI 1
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">🔌</span> HDMI 2
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">💾</span> USB
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">💻</span> VGA
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">📶</span> WiFi
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'proj-src')">
+        <span class="mode-icon">📱</span> Cast
+      </button>
+    </div>
+
+    <div class="section-label">Navigation</div>
+    <div class="dpad-container">
+      <div class="dpad">
+        <button class="dpad-btn dpad-up ripple" onclick="sendCmd('projector','up')">▲</button>
+        <button class="dpad-btn dpad-down ripple" onclick="sendCmd('projector','down')">▼</button>
+        <button class="dpad-btn dpad-left ripple" onclick="sendCmd('projector','left')">◀</button>
+        <button class="dpad-btn dpad-right ripple" onclick="sendCmd('projector','right')">▶</button>
+        <button class="dpad-btn dpad-center ripple" onclick="sendCmd('projector','ok')">OK</button>
+      </div>
+    </div>
+
+    <div class="section-label">Keystone</div>
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">↕️</span>
+        <input type="range" min="-30" max="30" value="0" oninput="updateSlider(this,'proj-keystone')">
+        <span class="slider-val" id="proj-keystone">0</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-icon">🔲</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'proj-zoom')">
+        <span class="slider-val" id="proj-zoom">50</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-icon">🔆</span>
+        <input type="range" min="0" max="100" value="70" oninput="updateSlider(this,'proj-bright')">
+        <span class="slider-val" id="proj-bright">70</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('projector','menu')"><span class="btn-icon">☰</span> Menu</button>
+      <button class="action-btn ripple" onclick="sendCmd('projector','back')"><span class="btn-icon">←</span> Back</button>
+      <button class="action-btn ripple" onclick="sendCmd('projector','freeze')"><span class="btn-icon">⏸</span> Freeze</button>
+      <button class="action-btn ripple" onclick="sendCmd('projector','blank')"><span class="btn-icon">⬛</span> Blank</button>
+    </div>
+  </div>
+
+  <!-- ==================== STREAMING REMOTE ==================== -->
+  <div class="device-remote" id="remote-stream">
+    <div class="power-section">
+      <button class="power-btn ripple" id="stream-power" onclick="togglePower('stream')">⏻</button>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('stream','home')"><span class="btn-icon">⌂</span> Home</button>
+      <button class="action-btn ripple" onclick="sendCmd('stream','search')"><span class="btn-icon">🔍</span> Search</button>
+      <button class="action-btn ripple" onclick="sendCmd('stream','back')"><span class="btn-icon">←</span> Back</button>
+    </div>
+
+    <div class="section-label">Navigation</div>
+    <div class="dpad-container">
+      <div class="dpad">
+        <button class="dpad-btn dpad-up ripple" onclick="sendCmd('stream','up')">▲</button>
+        <button class="dpad-btn dpad-down ripple" onclick="sendCmd('stream','down')">▼</button>
+        <button class="dpad-btn dpad-left ripple" onclick="sendCmd('stream','left')">◀</button>
+        <button class="dpad-btn dpad-right ripple" onclick="sendCmd('stream','right')">▶</button>
+        <button class="dpad-btn dpad-center ripple" onclick="sendCmd('stream','ok')">OK</button>
+      </div>
+    </div>
+
+    <div class="section-label">Playback</div>
+    <div class="media-controls">
+      <button class="media-btn ripple" onclick="sendCmd('stream','rewind')">⏪</button>
+      <button class="media-btn ripple" onclick="sendCmd('stream','prev')">⏮</button>
+      <button class="media-btn play ripple" onclick="sendCmd('stream','play_pause')">⏯</button>
+      <button class="media-btn ripple" onclick="sendCmd('stream','next')">⏭</button>
+      <button class="media-btn ripple" onclick="sendCmd('stream','forward')">⏩</button>
+    </div>
+
+    <div class="section-label">Quick Launch</div>
+    <div class="quick-grid">
+      <button class="quick-btn ripple" onclick="sendCmd('stream','netflix')"><span class="q-icon">🎥</span> Netflix</button>
+      <button class="quick-btn ripple" onclick="sendCmd('stream','youtube')"><span class="q-icon">▶️</span> YouTube</button>
+      <button class="quick-btn ripple" onclick="sendCmd('stream','prime')"><span class="q-icon">🎬</span> Prime</button>
+      <button class="quick-btn ripple" onclick="sendCmd('stream','disney')"><span class="q-icon">🏰</span> Disney+</button>
+      <button class="quick-btn ripple" onclick="sendCmd('stream','spotify')"><span class="q-icon">🎵</span> Spotify</button>
+      <button class="quick-btn ripple" onclick="sendCmd('stream','hulu')"><span class="q-icon">📺</span> Hulu</button>
+    </div>
+
+    <div class="section-label">Controls</div>
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('stream','mute')"><span class="btn-icon">🔇</span> Mute</button>
+      <button class="action-btn ripple" onclick="sendCmd('stream','cc')"><span class="btn-icon">💬</span> CC</button>
+      <button class="action-btn ripple" onclick="sendCmd('stream','cast')"><span class="btn-icon">📡</span> Cast</button>
+      <button class="action-btn ripple" onclick="sendCmd('stream','pic')"><span class="btn-icon">🖼</span> Pic</button>
+    </div>
+
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">🔈</span>
+        <input type="range" min="0" max="100" value="50" oninput="updateSlider(this,'stream-vol')">
+        <span class="slider-val" id="stream-vol">50</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LIGHTS REMOTE ==================== -->
+  <div class="device-remote" id="remote-light">
+    <div class="power-section">
+      <button class="power-btn ripple" id="light-power" onclick="togglePower('light')">⏻</button>
+    </div>
+
+    <div class="section-label">Brightness</div>
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">🔅</span>
+        <input type="range" min="0" max="100" value="80" oninput="updateSlider(this,'light-bright')">
+        <span class="slider-val" id="light-bright">80%</span>
+      </div>
+    </div>
+
+    <div class="section-label">Color Temperature</div>
+    <div class="slider-section">
+      <div class="slider-row">
+        <span class="slider-icon">🔶</span>
+        <input type="range" min="2700" max="6500" value="4000" oninput="updateColorTemp(this)">
+        <span class="slider-val" id="light-temp">4000K</span>
+      </div>
+    </div>
+
+    <div class="section-label">Scenes</div>
+    <div class="mode-grid">
+      <button class="mode-btn ripple active-mode" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon">📖</span> Reading
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon"> relaxed</span> Relax
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon">💼</span> Work
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon">🌅</span> Sunset
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon">🎉</span> Party
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'light-scene')">
+        <span class="mode-icon">🌙</span> Night
+      </button>
+    </div>
+
+    <div class="section-label">Color</div>
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:10px 0;">
+      <button class="color-btn" style="background:#e74c3c;width:40px;height:40px;" onclick="sendCmd('light','red')"></button>
+      <button class="color-btn" style="background:#e67e22;width:40px;height:40px;" onclick="sendCmd('light','orange')"></button>
+      <button class="color-btn" style="background:#f1c40f;width:40px;height:40px;color:#333;" onclick="sendCmd('light','yellow')"></button>
+      <button class="color-btn" style="background:#2ecc71;width:40px;height:40px;" onclick="sendCmd('light','green')"></button>
+      <button class="color-btn" style="background:#3498db;width:40px;height:40px;" onclick="sendCmd('light','blue')"></button>
+      <button class="color-btn" style="background:#9b59b6;width:40px;height:40px;" onclick="sendCmd('light','purple')"></button>
+      <button class="color-btn" style="background:#ecf0f1;width:40px;height:40px;color:#333;" onclick="sendCmd('light','white')"></button>
+      <button class="color-btn" style="background:linear-gradient(135deg,red,orange,yellow,green,blue,purple);width:40px;height:40px;" onclick="sendCmd('light','rainbow')"></button>
+    </div>
+
+    <div class="quick-grid">
+      <button class="quick-btn ripple" onclick="sendCmd('light','timer')"><span class="q-icon">⏲️</span> Timer</button>
+      <button class="quick-btn ripple" onclick="sendCmd('light','fade')"><span class="q-icon">🌅</span> Fade</button>
+      <button class="quick-btn ripple" onclick="sendCmd('light','strobe')"><span class="q-icon">⚡</span> Strobe</button>
+      <button class="quick-btn ripple" onclick="sendCmd('light','smooth')"><span class="q-icon">🌈</span> Smooth</button>
+    </div>
+  </div>
+
+  <!-- ==================== FAN REMOTE ==================== -->
+  <div class="device-remote" id="remote-fan">
+    <div class="power-section">
+      <button class="power-btn ripple" id="fan-power" onclick="togglePower('fan')">⏻</button>
+    </div>
+
+    <div class="section-label">Speed</div>
+    <div class="fan-speeds" style="gap:12px;">
+      <button class="fan-btn ripple" style="width:56px;height:56px;" onclick="setFan(this,'1')">1</button>
+      <button class="fan-btn ripple active-fan" style="width:56px;height:56px;" onclick="setFan(this,'2')">2</button>
+      <button class="fan-btn ripple" style="width:56px;height:56px;" onclick="setFan(this,'3')">3</button>
+    </div>
+
+    <div class="section-label">Mode</div>
+    <div class="mode-grid">
+      <button class="mode-btn ripple active-mode" onclick="selectMode(this,'fan-mode')">
+        <span class="mode-icon">🌀</span> Normal
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'fan-mode')">
+        <span class="mode-icon">🌊</span> Natural
+      </button>
+      <button class="mode-btn ripple" onclick="selectMode(this,'fan-mode')">
+        <span class="mode-icon">💤</span> Sleep
+      </button>
+    </div>
+
+    <div class="section-label">Oscillation</div>
+    <div class="action-row">
+      <button class="action-btn ripple" onclick="sendCmd('fan','oscillate')"><span class="btn-icon">↔️</span> Oscillate</button>
+      <button class="action-btn ripple" onclick="sendCmd('fan','rotate')"><span class="btn-icon">🔄</span> Rotate</button>
+    </div>
+
+    <div class="section-label">Timer</div>
+    <div class="quick-grid">
+      <button class="quick-btn ripple" onclick="sendCmd('fan','timer_1')"><span class="q-icon">1h</span> 1 Hour</button>
+      <button class="quick-btn ripple" onclick="sendCmd('fan','timer_2')"><span class="q-icon">2h</span> 2 Hours</button>
+      <button class="quick-btn ripple" onclick="sendCmd('fan','timer_4')"><span class="q-icon">4h</span> 4 Hours</button>
+      <button class="quick-btn ripple" onclick="sendCmd('fan','timer_8')"><span class="q-icon">8h</span> 8 Hours</button>
+    </div>
+  </div>
+
+  <div class="pc-hint">Use your keyboard arrows, Enter, Escape, and number keys for quick control</div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="settingsPanel" onclick="closeSettings(event)">
+  <div class="settings-card" onclick="event.stopPropagation()">
+    <h3>⚙️ Settings</h3>
+    <div class="setting-item">
+      <label>Haptic Feedback</label>
+      <div class="toggle on" id="toggle-haptic" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-item">
+      <label>Sound Effects</label>
+      <div class="toggle" id="toggle-sound" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-item">
+      <label>Button Animations</label>
+      <div class="toggle on" id="toggle-anim" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-item">
+      <label>Show Toast Messages</label>
+      <div class="toggle on" id="toggle-toast" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-item">
+      <label>Keyboard Controls</label>
+      <div class="toggle on" id="toggle-keyboard" onclick="toggleSetting(this)"></div>
+    </div>
+    <button class="settings-close" onclick="closeSettings()">Close</button>
+  </div>
+</div>
+
+<script>
+  // ===== State =====
+  const state = {
+    activeDevice: 'tv',
+    devices: {
+      tv: { power: false },
+      audio: { power: false },
+      ac: { power: false, temp: 24 },
+      projector: { power: false },
+      stream: { power: false },
+      light: { power: false },
+      fan: { power: false },
+    },
+    settings: {
+      haptic: true,
+      sound: false,
+      anim: true,
+      toast: true,
+      keyboard: true,
+    }
+  };
+
+  // ===== Audio Context for click sounds =====
+  let audioCtx = null;
+  function playClick() {
+    if (!state.settings.sound) return;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 1800;
+    osc.type = 'sine';
+    gain.gain.value = 0.08;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+    osc.stop(audioCtx.currentTime + 0.06);
+  }
+
+  // ===== Haptic Feedback =====
+  function vibrate(pattern = 15) {
+    if (state.settings.haptic && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  }
+
+  // ===== Toast =====
+  function showToast(msg) {
+    if (!state.settings.toast) return;
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  // ===== Device Switching =====
+  function switchDevice(device) {
+    state.activeDevice = device;
+    document.querySelectorAll('.device-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.device-tab[data-device="${device}"]`).classList.add('active');
+    document.querySelectorAll('.device-remote').forEach(r => r.classList.remove('active'));
+    document.getElementById(`remote-${device}`).classList.add('active');
+    vibrate(10);
+    playClick();
+  }
+
+  // ===== Power Toggle =====
+  function togglePower(device) {
+    state.devices[device].power = !state.devices[device].power;
+    const btn = document.getElementById(`${device}-power`);
+    btn.classList.toggle('on', state.devices[device].power);
+    const label = state.devices[device].power ? 'ON' : 'OFF';
+    showToast(`${device.toUpperCase()} turned ${label}`);
+    vibrate(30);
+    playClick();
+  }
+
+  // ===== Send Command =====
+  function sendCmd(device, cmd) {
+    vibrate();
+    playClick();
+    const deviceNames = {
+      tv: 'TV', audio: 'Audio', ac: 'AC',
+      projector: 'Projector', stream: 'Streaming', light: 'Light', fan: 'Fan'
+    };
+    const cmdLabels = {
+      vol_up: 'Volume Up', vol_down: 'Volume Down',
+      ch_up: 'Channel Up', ch_down: 'Channel Down',
+      up: 'Navigate Up', down: 'Navigate Down',
+      left: 'Navigate Left', right: 'Navigate Right',
+      ok: 'OK', menu: 'Menu', back: 'Back', home: 'Home',
+      info: 'Info', mute: 'Mute Toggle', input: 'Input',
+      sleep: 'Sleep Timer', record: 'Record',
+      play: 'Play', pause: 'Pause', stop: 'Stop',
+      play_pause: 'Play/Pause', rewind: 'Rewind', forward: 'Fast Forward',
+      prev: 'Previous', next: 'Next', shuffle: 'Shuffle', repeat: 'Repeat',
+      bluetooth: 'Bluetooth', aux: 'AUX', usb: 'USB',
+      turbo: 'Turbo Mode', swing: 'Swing', timer: 'Timer',
+      clean: 'Self Clean', display: 'Display', quiet: 'Quiet Mode',
+      freeze: 'Freeze', blank: 'Blank Screen',
+      search: 'Search', cc: 'Closed Captions', cast: 'Cast', pic: 'Picture Mode',
+      netflix: 'Netflix', youtube: 'YouTube', prime: 'Prime Video',
+      disney: 'Disney+', spotify: 'Spotify', hulu: 'Hulu',
+      red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue',
+      orange: 'Orange', purple: 'Purple', white: 'White', rainbow: 'Rainbow',
+      fade: 'Fade Effect', strobe: 'Strobe Effect', smooth: 'Smooth Transition',
+      oscillate: 'Oscillation', rotate: 'Rotation',
+      timer_1: 'Timer 1h', timer_2: 'Timer 2h', timer_4: 'Timer 4h', timer_8: 'Timer 8h',
+    };
+    const label = cmdLabels[cmd] || cmd.toUpperCase();
+    showToast(`${deviceNames[device]}: ${label}`);
+
+    // Log for debugging / future integration
+    console.log(`[Remote] Device: ${device}, Command: ${cmd}`);
+  }
+
+  // ===== Slider Updates =====
+  function updateSlider(el, id) {
+    const valEl = document.getElementById(id);
+    if (valEl) valEl.textContent = el.value;
+    vibrate(5);
+  }
+
+  function updateColorTemp(el) {
+    const valEl = document.getElementById('light-temp');
+    if (valEl) valEl.textContent = el.value + 'K';
+    vibrate(5);
+  }
+
+  // ===== Mode Selection =====
+  function selectMode(btn, group) {
+    const parent = btn.closest('.mode-grid') || btn.closest('.fan-speeds');
+    parent.querySelectorAll('.mode-btn, .fan-btn').forEach(b => b.classList.remove('active-mode', 'active-fan'));
+    btn.classList.add('active-mode');
+    vibrate();
+    playClick();
+  }
+
+  // ===== AC Controls =====
+  function adjustTemp(delta) {
+    const d = state.devices.ac;
+    d.temp = Math.min(30, Math.max(16, d.temp + delta));
+    document.getElementById('ac-temp').innerHTML = `${d.temp}<span>°C</span>`;
+    showToast(`Temperature: ${d.temp}°C`);
+    vibrate();
+    playClick();
+  }
+
+  function setAcMode(mode) {
+    document.getElementById('ac-mode-label').textContent = mode;
+    showToast(`Mode: ${mode}`);
+  }
+
+  // ===== Fan Speed =====
+  function setFan(btn, speed) {
+    const parent = btn.closest('.fan-speeds');
+    parent.querySelectorAll('.fan-btn').forEach(b => b.classList.remove('active-fan'));
+    btn.classList.add('active-fan');
+    showToast(`Fan Speed: ${speed}`);
+    vibrate();
+    playClick();
+  }
+
+  // ===== Ripple Effect =====
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ripple');
+    if (!btn || !state.settings.anim) return;
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple-effect';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+  });
+
+  // ===== Settings =====
+  function openSettings() {
+    document.getElementById('settingsPanel').classList.add('open');
+  }
+  function closeSettings(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('settingsPanel').classList.remove('open');
+  }
+  function toggleSetting(el) {
+    el.classList.toggle('on');
+    const id = el.id;
+    const key = id.replace('toggle-', '');
+    state.settings[key] = el.classList.contains('on');
+    showToast(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${state.settings[key] ? 'ON' : 'OFF'}`);
+    vibrate();
+  }
+
+  // ===== Keyboard Support =====
+  const keyMap = {
+    'ArrowUp': 'up', 'ArrowDown': 'down',
+    'ArrowLeft': 'left', 'ArrowRight': 'right',
+    'Enter': 'ok', 'Escape': 'back',
+    ' ': 'play_pause', 'm': 'mute',
+    'Backspace': 'back', 'h': 'home',
+  };
+  const numKeys = '0123456789';
+
+  document.addEventListener('keydown', function(e) {
+    if (!state.settings.keyboard) return;
+    if (e.target.tagName === 'INPUT') return;
+
+    const device = state.activeDevice;
+
+    if (keyMap[e.key]) {
+      e.preventDefault();
+      sendCmd(device, keyMap[e.key]);
+      return;
+    }
+    if (numKeys.includes(e.key)) {
+      e.preventDefault();
+      sendCmd(device, e.key);
+      return;
+    }
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      if (device === 'ac') adjustTemp(1);
+      else sendCmd(device, 'vol_up');
+    }
+    if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      if (device === 'ac') adjustTemp(-1);
+      else sendCmd(device, 'vol_down');
+    }
+    if (e.key === 'p') { e.preventDefault(); togglePower(device); }
+    if (e.key === '1' && e.ctrlKey) { e.preventDefault(); switchDevice('tv'); }
+    if (e.key === '2' && e.ctrlKey) { e.preventDefault(); switchDevice('audio'); }
+    if (e.key === '3' && e.ctrlKey) { e.preventDefault(); switchDevice('ac'); }
+    if (e.key === '4' && e.ctrlKey) { e.preventDefault(); switchDevice('projector'); }
+    if (e.key === '5' && e.ctrlKey) { e.preventDefault(); switchDevice('stream'); }
+    if (e.key === '6' && e.ctrlKey) { e.preventDefault(); switchDevice('light'); }
+    if (e.key === '7' && e.ctrlKey) { e.preventDefault(); switchDevice('fan'); }
+  });
+
+  // ===== Swipe support for tab scrolling =====
+  const tabsContainer = document.getElementById('deviceTabs');
+  let isDown = false, startX, scrollLeft;
+  tabsContainer.addEventListener('mousedown', (e) => {
+    isDown = true; startX = e.pageX - tabsContainer.offsetLeft;
+    scrollLeft = tabsContainer.scrollLeft;
+  });
+  tabsContainer.addEventListener('mouseleave', () => isDown = false);
+  tabsContainer.addEventListener('mouseup', () => isDown = false);
+  tabsContainer.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - tabsContainer.offsetLeft;
+    tabsContainer.scrollLeft = scrollLeft - (x - startX) * 1.5;
+  });
+
+  // ===== Long press for repeat commands =====
+  let longPressTimer = null;
+  let longPressInterval = null;
+
+  document.addEventListener('pointerdown', function(e) {
+    const btn = e.target.closest('[onclick]');
+    if (!btn) return;
+    const onclick = btn.getAttribute('onclick');
+    if (!onclick) return;
+
+    // Only for vol_up, vol_down, ch_up, ch_down, temp adjustments
+    const repeatableCmds = ['vol_up', 'vol_down', 'ch_up', 'ch_down'];
+    const isRepeatable = repeatableCmds.some(cmd => onclick.includes(cmd)) || onclick.includes('adjustTemp');
+
+    if (isRepeatable) {
+      longPressTimer = setTimeout(() => {
+        longPressInterval = setInterval(() => {
+          btn.click();
+        }, 150);
+      }, 500);
+    }
+  });
+
+  document.addEventListener('pointerup', stopRepeat);
+  document.addEventListener('pointerleave', stopRepeat);
+  document.addEventListener('pointercancel', stopRepeat);
+
+  function stopRepeat() {
+    clearTimeout(longPressTimer);
+    clearInterval(longPressInterval);
+    longPressTimer = null;
+    longPressInterval = null;
+  }
+
+  // ===== Prevent zoom on double tap (mobile) =====
+  document.addEventListener('dblclick', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // ===== Service Worker hint =====
+  console.log('%c⚡ Universal Virtual Remote', 'font-size:20px;font-weight:bold;color:#6c5ce7;');
+  console.log('%cAdd this to your home screen for a native app experience!', 'font-size:12px;color:#888;');
+</script>
+
+</body>
+</html>
